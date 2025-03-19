@@ -1,10 +1,10 @@
-## Mono6D: Transforming Casually Captured 360° Video into on-the-go 6-DOF Immersive Experiences
+# Mono6D: Transforming Casually Captured 360° Video into on-the-go 6-DOF Immersive Experiences
 
 For more details, you can find the final technical report under /docs or visit [the project website](https://boezzz.com/mono6D/)
 
 This repository reproduces some results from the paper: [Motion parallax for 360 RGBD video](https://ana-serrano.github.io/projects/VR-6dof.html).
 
-## Content:
+### Content:
 
 - From the original codebase
 	- Compiled demo
@@ -14,7 +14,7 @@ This repository reproduces some results from the paper: [Motion parallax for 360
    	- webXR viewer
    	- Python preprocessing code
 
-#### Reference:
+### Reference:
 
 ```
 @article{Serrano_TVCG_VR-6dof,

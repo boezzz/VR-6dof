@@ -104,13 +104,11 @@ function setupControllers() {
   // Controller 1
   const controller1 = renderer.xr.getController(0);
   controller1.addEventListener('selectstart', onSelectStart);
-  controller1.addEventListener('squeezeend', onSqueezeEnd);
   scene.add(controller1);
 
   // Controller 2
   const controller2 = renderer.xr.getController(1);
-  controller2.addEventListener('selectstart', onSelectStart);
-  controller2.addEventListener('squeezeend', onSqueezeEnd);
+  controller2.addEventListener('selectstart', onSwitchStart);
   scene.add(controller2);
 
   // Controller grips for visualizing controllers
@@ -130,7 +128,7 @@ function onSelectStart(event) {
   }
 }
 
-function onSqueezeEnd(event) {
+function onSwitchStart(event) {
   // Cycle to next video on button release
   cycleToNextVideo();
   if (rgbdPlayer) {

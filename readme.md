@@ -1,8 +1,20 @@
-## Motion parallax for 360 RGBD video
+# Mono6D: Transforming Casually Captured 360° Video into On-The-Go 6-DOF Immersive Experiences
 
-This repository provides code to reproduce results from the paper: [Motion parallax for 360 RGBD video](https://ana-serrano.github.io/projects/VR-6dof.html).
+For more details, you can find the final technical report under /docs or visit [the project website](https://boezzz.com/mono6D/)
 
-We kindly ask you to cite our paper if you use this code in your research: 
+This repository reproduces some results from the paper: [Motion parallax for 360 RGBD video](https://ana-serrano.github.io/projects/VR-6dof.html).
+
+### Content:
+
+- From the original codebase
+	- Compiled demo
+	- Viewer source code
+	- Video processing source code
+ - mono6D
+   	- webXR viewer
+   	- Python preprocessing code
+
+### Reference:
 
 ```
 @article{Serrano_TVCG_VR-6dof,
@@ -18,11 +30,3 @@ journal   = {IEEE Transactions on Visualization and Computer Graphics},
 year      = {2019},
 }
 ```
-
-## Content:
-
-- Compiled demo - This demo has been tested under the following environment:
-	- Windows 10 x64 equiped with a Nvidia Titan X (Pascal)
-	- Oculus App Last Version tested: 1.35.0.206993
-- Viewer source code
-- Video processing source code 

@@ -17,7 +17,7 @@ let controllerGrip1, controllerGrip2;
 let rgbdPlayer;
 
 // load assets
-const filename = 'pier';
+const filenames = 'bishop01_1';
 
 const videoPath = `./video/${filename}.mp4`;
 const depthVideoPath = `./video/${filename}_depth.mp4`;
@@ -41,12 +41,8 @@ function init() {
   camera.position.set(0, 0, 0);
   // camera added automatically
   
-  // Set up renderer with WebXR support
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.xr.enabled = true;
-  document.body.appendChild(renderer.domElement);
-  document.body.appendChild(VRButton.createButton(renderer));
+  // Set up renderer with proper transparency handling
+  setupRenderer();
   
   // Handle window resize
   window.addEventListener('resize', onWindowResize, false);
@@ -59,11 +55,12 @@ function init() {
     // Create RGBD player when assets are loaded
     rgbdPlayer = new RGBDVideoPlayer();
     rgbdPlayer.addToScene(scene);
+    rgbdPlayer.setLayerCount(3); // Enable all layers by default
     
     console.log('RGBD player ready');
   });
   
-  // Start animation loop, function animate decalred later
+  // Start animation loop
   renderer.setAnimationLoop(animate);
 }
 
@@ -199,6 +196,10 @@ class RGBDVideoPlayer {
     
     // Setup the different rendering layers
     this.setupLayers();
+    
+    this.sphereCenter = new THREE.Vector3(0, 0, 0);
+    this.worldMatrix = new THREE.Matrix4();
+    this.layerCount = 3;
   }
   
   setupLayers() {
@@ -218,7 +219,7 @@ class RGBDVideoPlayer {
     });
     this.bgLayer = new THREE.Mesh(this.geometry, this.bgSimpleMaterial);
     
-    // Layer 2: Extrapolatred Layer
+    // Layer 2: Extrapolated Layer
     this.fgSimpleMaterial = new THREE.ShaderMaterial({
       uniforms: {
         fgtext: { value: assets.extrapolatedTexture },
@@ -231,7 +232,7 @@ class RGBDVideoPlayer {
       },
       vertexShader: fgSimpleVertexShader,
       fragmentShader: fgSimpleFragmentShader,
-      transparent: true
+      transparent: true,
     });
     this.fgLayer = new THREE.Mesh(this.geometry, this.fgSimpleMaterial);
     
@@ -241,9 +242,10 @@ class RGBDVideoPlayer {
         fgtext: { value: this.videoTexture },
         fgdepth: { value: this.depthTexture },
         alphamask: { value: this.alphaTexture },
-        Fragfgdepth: { value: assets.extrapolatedDepth },
+        Fragfgdepth: { value: this.depthTexture },
         matWVP2: { value: new THREE.Matrix4() },
         matW2: { value: new THREE.Matrix4() },
+        ViewDir2: { value: new THREE.Matrix4() },
         SphCenter2: { value: new THREE.Vector3(0, 0, 0) },
         eyepos: { value: new THREE.Vector3(0, 0, 0) },
         headposition: { value: new THREE.Vector3(0, 0, 0) },
@@ -253,15 +255,21 @@ class RGBDVideoPlayer {
       },
       vertexShader: movSimpleVertexShader,
       fragmentShader: movSimpleFragmentShader,
-      transparent: true
+      transparent: true,
     });
     this.movLayer = new THREE.Mesh(this.geometry, this.foregroundMat);
+
+    this.bgLayer.renderOrder = 0;
+    this.fgLayer.renderOrder = 1;
+    this.movLayer.renderOrder = 2;
     
     // Group all layers
     this.group = new THREE.Group();
     this.group.add(this.bgLayer);
     this.group.add(this.fgLayer);
     this.group.add(this.movLayer);
+
+    this.group.position.set(0, 1.7, 0);
   }
   
   addToScene(scene) {
@@ -285,46 +293,176 @@ class RGBDVideoPlayer {
 
   recenterCamera() {
     // recenter to the center of projection
-    this.camera.position.set(0, 0, 0);
+    camera.position.set(0, 0, 0);
   }
   
   update(camera) {
     if (!camera) return;
     
-    // Update matrices for all shaders
-    const projectionMatrix = camera.projectionMatrix;
-    const viewMatrix = camera.matrixWorldInverse;
-    const modelMatrix = this.group.matrixWorld;
+    // Get the world matrix of the group
+    this.worldMatrix.copy(this.group.matrixWorld);
     
-    const modelViewProjectionMatrix = new THREE.Matrix4();
-    // Compute MVP matrix
-    modelViewProjectionMatrix.multiplyMatrices(projectionMatrix, viewMatrix);
-    modelViewProjectionMatrix.multiply(modelMatrix);
+    // Calculate sphere center in world space
+    this.sphereCenter.set(0, 0, 0).applyMatrix4(this.worldMatrix);
     
-    // Update uniform values
-    this.bgSimpleMaterial.uniforms.matWVP.value.copy(modelViewProjectionMatrix);
-    this.fgSimpleMaterial.uniforms.matWVP2.value.copy(modelViewProjectionMatrix);
-
-    this.foregroundMat.uniforms.matWVP2.value.copy(modelViewProjectionMatrix);
-    this.foregroundMat.uniforms.matW2.value.copy(modelMatrix);
-    
-    // Update head/eye position for parallax effect
     if (renderer.xr.isPresenting) {
-      const xrCamera = renderer.xr.getCamera(camera);
-      this.foregroundMat.uniforms.eyepos.value.setFromMatrixPosition(xrCamera.matrixWorld);
-      this.foregroundMat.uniforms.headposition.value.setFromMatrixPosition(xrCamera.matrixWorld);
-    } else {
-      this.foregroundMat.uniforms.eyepos.value.copy(camera.position);
-      this.foregroundMat.uniforms.headposition.value.copy(camera.position);
+      // XR mode - get the head position and update matrices for each eye
+      const xrCamera = renderer.xr.getCamera();
+      const headPosition = new THREE.Vector3().setFromMatrixPosition(xrCamera.matrixWorld);
+      
+      // Set up eye-specific updates through the onBeforeRender callback
+      const onBeforeRender = (renderer, scene, camera, geometry, material, group) => {
+        // Get view and projection matrices for the current eye
+        const viewMatrix = camera.matrixWorldInverse;
+        const projectionMatrix = camera.projectionMatrix;
+        
+        // Get eye position
+        const eyePosition = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
+        
+        // Calculate combined matrices
+        const mvpMatrix = new THREE.Matrix4()
+          .multiplyMatrices(projectionMatrix, viewMatrix)
+          .multiply(this.worldMatrix);
+        
+        // Calculate view direction matrix
+        const viewDir = new THREE.Matrix4().lookAt(
+          eyePosition,
+          this.sphereCenter,
+          new THREE.Vector3(0, 1, 0)
+        );
+        
+        // Update based on which material/layer we're rendering
+        if (material === this.bgSimpleMaterial) {
+          // Background layer
+          material.uniforms.matWVP.value.copy(mvpMatrix);
+          material.uniforms.desat.value = 0.0;
+          material.uniforms.colored.value = 0.0;
+        } 
+        else if (material === this.fgSimpleMaterial) {
+          // Extrapolated layer
+          material.uniforms.matWVP2.value.copy(mvpMatrix);
+          material.uniforms.desat.value = 0.0;
+          material.uniforms.colored.value = 0.0;
+        } 
+        else if (material === this.foregroundMat) {
+          // Foreground video layer
+          material.uniforms.matWVP2.value.copy(mvpMatrix);
+          material.uniforms.matW2.value.copy(this.worldMatrix);
+          material.uniforms.ViewDir2.value.copy(viewDir);
+          material.uniforms.SphCenter2.value.copy(this.sphereCenter);
+          material.uniforms.spherecenter.value.copy(this.sphereCenter);
+          material.uniforms.eyepos.value.copy(eyePosition);
+          material.uniforms.headposition.value.copy(headPosition);
+          material.uniforms.desat.value = 0.0;
+          material.uniforms.colored.value = 0.0;
+        }
+      };
+      
+      // Apply the callback to all layers
+      this.bgLayer.onBeforeRender = onBeforeRender;
+      this.fgLayer.onBeforeRender = onBeforeRender;
+      this.movLayer.onBeforeRender = onBeforeRender;
+    } 
+    else {
+      // Non-VR mode - simpler update
+      const viewMatrix = camera.matrixWorldInverse;
+      const projectionMatrix = camera.projectionMatrix;
+      const eyePosition = camera.position.clone();
+      
+      // Calculate combined matrices
+      const mvpMatrix = new THREE.Matrix4()
+        .multiplyMatrices(projectionMatrix, viewMatrix)
+        .multiply(this.worldMatrix);
+        
+      // Calculate view direction matrix
+      const viewDir = new THREE.Matrix4().lookAt(
+        eyePosition,
+        this.sphereCenter,
+        new THREE.Vector3(0, 1, 0)
+      );
+      
+      // Update all materials directly
+      // Background layer
+      this.bgSimpleMaterial.uniforms.matWVP.value.copy(mvpMatrix);
+      this.bgSimpleMaterial.uniforms.desat.value = 0.0;
+      this.bgSimpleMaterial.uniforms.colored.value = 0.0;
+      
+      // Extrapolated layer
+      this.fgSimpleMaterial.uniforms.matWVP2.value.copy(mvpMatrix);
+      this.fgSimpleMaterial.uniforms.desat.value = 0.0;
+      this.fgSimpleMaterial.uniforms.colored.value = 0.0;
+      
+      // Foreground video layer
+      this.foregroundMat.uniforms.matWVP2.value.copy(mvpMatrix);
+      this.foregroundMat.uniforms.matW2.value.copy(this.worldMatrix);
+      this.foregroundMat.uniforms.ViewDir2.value.copy(viewDir);
+      this.foregroundMat.uniforms.SphCenter2.value.copy(this.sphereCenter);
+      this.foregroundMat.uniforms.spherecenter.value.copy(this.sphereCenter);
+      this.foregroundMat.uniforms.eyepos.value.copy(eyePosition);
+      this.foregroundMat.uniforms.headposition.value.copy(eyePosition);
+      this.foregroundMat.uniforms.desat.value = 0.0;
+      this.foregroundMat.uniforms.colored.value = 0.0;
     }
+  }
+  
+  // Add method to set layer visibility
+  setLayerCount(count) {
+    this.layerCount = Math.max(1, Math.min(3, count));
     
-    // Update sphere center (assumed to be at origin)
-    this.foregroundMat.uniforms.SphCenter2.value.set(0, 0, 0);
-    this.foregroundMat.uniforms.spherecenter.value.set(0, 0, 0);
+    // Always show background
+    this.bgLayer.visible = true;
+    
+    // Show/hide extrapolated layer
+    this.fgLayer.visible = this.layerCount >= 2;
+    
+    // Show/hide foreground video layer
+    this.movLayer.visible = this.layerCount >= 3;
+  }
+  
+  // Add method to set desaturation and coloring effects
+  setVisualEffects(desaturation, colored) {
+    // Update all materials
+    this.bgSimpleMaterial.uniforms.desat.value = desaturation;
+    this.bgSimpleMaterial.uniforms.colored.value = colored ? 1.0 : 0.0;
+    
+    this.fgSimpleMaterial.uniforms.desat.value = desaturation;
+    this.fgSimpleMaterial.uniforms.colored.value = colored ? 1.0 : 0.0;
+    
+    this.foregroundMat.uniforms.desat.value = desaturation;
+    this.foregroundMat.uniforms.colored.value = colored ? 1.0 : 0.0;
   }
 }
 
-// Animation loop
+// Additional renderer setup for proper transparency handling
+function setupRenderer() {
+  renderer = new THREE.WebGLRenderer({ 
+    antialias: true,
+    alpha: true
+  });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  
+  // Set up transparency and depth testing
+  renderer.setClearColor(0x000000, 0);
+  renderer.autoClear = false;
+  
+  // Modify render loop for proper transparency handling
+  const originalSetAnimationLoop = renderer.setAnimationLoop;
+  renderer.setAnimationLoop = function(callback) {
+    originalSetAnimationLoop.call(this, function() {
+      // Clear the buffers
+      renderer.clear();
+      
+      // Render the scene
+      if (callback) callback();
+    });
+  };
+  
+  document.body.appendChild(renderer.domElement);
+  document.body.appendChild(VRButton.createButton(renderer));
+}
+
+// animate loop
 function animate() {
   if (rgbdPlayer) {
     rgbdPlayer.update(camera);

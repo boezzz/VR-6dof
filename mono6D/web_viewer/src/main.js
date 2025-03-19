@@ -16,6 +16,7 @@ let scene, camera, renderer;
 let controllerGrip1, controllerGrip2;
 let rgbdPlayer;
 
+// add filename here to be included in the web app
 const filenames = ['bishop01_1', 'pier', 'cafeteria', 'shore'];
 let currentFileIndex = 0;
 
@@ -90,7 +91,7 @@ function cycleToNextVideo() {
   loadCurrentVideo();
 }
 
-// maybe optional, pending delete
+// TODO: maybe optional, pending delete
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
@@ -101,17 +102,17 @@ function onWindowResize() {
 function setupControllers() {
   const controllerModelFactory = new XRControllerModelFactory();
   
-  // Controller 1
+  // Controller 1 (right on quest)
   const controller1 = renderer.xr.getController(0);
   controller1.addEventListener('selectstart', onSelectStart);
   scene.add(controller1);
 
-  // Controller 2
+  // Controller 2 (left on quest)
   const controller2 = renderer.xr.getController(1);
   controller2.addEventListener('selectstart', onSwitchStart);
   scene.add(controller2);
 
-  // Controller grips for visualizing controllers
+  // Controller grips for visualizing controllers (optional)
   controllerGrip1 = renderer.xr.getControllerGrip(0);
   controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
   scene.add(controllerGrip1);

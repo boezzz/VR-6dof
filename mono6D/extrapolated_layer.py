@@ -62,7 +62,7 @@ def create_extrapolated_layer(filename):
         rgb_block_r[:, :, idx] = rgb_tex[:, :, 0]
         rgb_block_g[:, :, idx] = rgb_tex[:, :, 1]
         rgb_block_b[:, :, idx] = rgb_tex[:, :, 2]
-        depth_block[:, :, idx] = d_tex[:, :, 0]  # Assume depth is single-channel
+        depth_block[:, :, idx] = d_tex[:, :, 0]
     
     # Compute robust median of the min depth values
     sorted_depth = np.sort(depth_block, axis=2)
@@ -78,14 +78,4 @@ def create_extrapolated_layer(filename):
     cv2.imwrite(os.path.join(out_path, f"{filename}_BG.png"), (color_out * 255).astype(np.uint8))
     cv2.imwrite(os.path.join(out_path, f"{filename}_BG_depth.png"), (depth_out * 255).astype(np.uint8))
     
-    # Save as single-frame videos
-    # for name, frame in zip(["BG", "BG_depth"], [color_out, depth_out]):
-    #     out_vid_path = os.path.join(out_path, f"{filename}_{name}.mp4")
-    #     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    #     out_vid = cv2.VideoWriter(out_vid_path, fourcc, 30, (width, height))
-    #     out_vid.write((frame * 255).astype(np.uint8) if name == "BG" else cv2.merge([frame] * 3))
-    #     out_vid.release()
-    
-    # fg_rgb_vid.release()
-    # fg_depth_vid.release()
     print(f"Extrapolated layer created successfully for {filename}.")

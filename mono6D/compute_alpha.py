@@ -147,25 +147,24 @@ def process_alpha_map(orientation_map):
     # - Values close to 1 (bright) = face normal parallel to view direction (center of faces)
     # - Values close to 0 (dark) = face normal perpendicular to view direction (edges/boundaries)
     
-    # 1. First, we need to enhance edges (dark areas in the orientation map)
-    # We'll invert the map to focus on edges (make them bright)
+    # 1. enhance edges (dark areas in the orientation map)
+    #TODO: might need to fix this
     inverted = 1.0 - input_map
     
     # 2. Closing operation: erode then dilate
-    # Create a disk-shaped structuring element (equivalent to MATLAB's strel('disk',2))
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     
-    # Erode the inverted image (equivalent to MATLAB's imerode(imcomplement(out), se))
+    # Erode the inverted image
     eroded = cv2.erode(inverted, kernel)
     
-    # Dilate the eroded image (equivalent to MATLAB's imdilate(aa, se))
+    # Dilate the eroded image
     dilated = cv2.dilate(eroded, kernel)
     
-    # 3. Thresholding (bb.*double(bb>0.8) in MATLAB)
-    threshold = 0.8
+    # 3. Thresholding
+    threshold = 0.3
     thresholded = dilated * (dilated > threshold)
     
-    # 4. Gaussian blur (imgaussfilt(cc,11,'FilterSize',7) in MATLAB)
+    # 4. Gaussian blur
     # FilterSize=7 is the kernel size, sigma=11 is the standard deviation
     smoothed = cv2.GaussianBlur(thresholded, (7, 7), 11)
     
@@ -175,13 +174,13 @@ def process_alpha_map(orientation_map):
     sigmoid = 1.0 / (1.0 + np.exp(-k * (smoothed - c)))
     
     # Clean up very small values and saturate high values
-    sigmoid[sigmoid < 0.1] = 0
-    sigmoid[sigmoid > 0.8] = 1
+    # sigmoid[sigmoid < 0.1] = 0
+    # sigmoid[sigmoid > 0.6] = 1
     
     # Invert values: 
     # 1 (white) = fully opaque
     # 0 (black) = fully transparent
-    alpha_map = 1.0 - sigmoid
+    alpha_map = 1 - sigmoid
     
     # Create a 3-channel BGR image
     alpha_bgr = np.stack([alpha_map, alpha_map, alpha_map], axis=2) * 255

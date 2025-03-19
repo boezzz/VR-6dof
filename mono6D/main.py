@@ -60,7 +60,7 @@ def main_process(filename):
     print("COMPUTING TRIANGLE ORIENTATIONS")
     input_dir = f"_improved_depth/{filename}/videos/"
     output_dir = f"_triangle_orientations/{filename}"
-    # compute_triangle_orientations(input_dir, filename, output_dir)
+    compute_triangle_orientations(input_dir, filename, output_dir)
     
     # Step 3: Compute transparency values
     print("COMPUTING TRANSPARENCY VALUES")

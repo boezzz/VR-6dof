@@ -5,6 +5,7 @@ from pathlib import Path
 import trimesh
 import math
 from scipy.spatial.transform import Rotation as R
+import matplotlib.pyplot as plt
 
 def compute_triangle_orientations(input_dir, filename, output_dir):
     """
@@ -18,6 +19,10 @@ def compute_triangle_orientations(input_dir, filename, output_dir):
     """
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
+    
+    # Create a debug directory
+    debug_dir = os.path.join(output_dir, "debug")
+    os.makedirs(debug_dir, exist_ok=True)
     
     # Get video/image paths
     rgb_path = os.path.join(input_dir, f"{filename}.mp4")
@@ -72,7 +77,7 @@ def compute_triangle_orientations(input_dir, filename, output_dir):
                 depth_frame = cv2.cvtColor(depth_frame, cv2.COLOR_BGR2GRAY)
             
             # Process the equirectangular frame
-            process_frame(depth_frame, rgb_frame, filename, frame_idx, output_dir)
+            process_frame(depth_frame, rgb_frame, filename, frame_idx, output_dir, debug_dir)
         
         # Release videos
         rgb_video.release()
@@ -87,11 +92,10 @@ def compute_triangle_orientations(input_dir, filename, output_dir):
             raise ValueError(f"Could not read image files: {rgb_path} and {depth_path}")
         
         # Process the equirectangular frame
-        process_frame(depth_frame, rgb_frame, filename, 0, output_dir)
-    
-    print(f"Triangle orientations computed and saved to {output_dir}")
+        process_frame(depth_frame, rgb_frame, filename, 0, output_dir, debug_dir)
 
-def process_frame(depth_frame, rgb_frame, filename, frame_idx, output_dir):
+
+def process_frame(depth_frame, rgb_frame, filename, frame_idx, output_dir, debug_dir):
     """
     Process a single equirectangular frame to compute triangle orientations
     
@@ -101,28 +105,54 @@ def process_frame(depth_frame, rgb_frame, filename, frame_idx, output_dir):
         filename: Base filename
         frame_idx: Frame index
         output_dir: Output directory
+        debug_dir: Directory for debug images
     """
-    # Normalize depth frame if needed
+    # Ensure depth frame is in uint8 format without normalizing
     if depth_frame.dtype != np.uint8:
-        depth_frame = cv2.normalize(depth_frame, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+        depth_frame = depth_frame.astype(np.uint8)
+    
+    # Visualize depth with jet colormap for better visualization
+    depth_colored = cv2.applyColorMap(depth_frame, cv2.COLORMAP_JET)
+    cv2.imwrite(os.path.join(debug_dir, f"{filename}_frame_{frame_idx:04d}_depth_colored.jpg"), depth_colored)
     
     # Convert equirectangular depth to cubemap faces
     faces = equirectangular_to_cubemap(depth_frame)
+    
+    # Save cubemap faces for debugging
+    for face_idx, face_depth in enumerate(faces):
+        # Save the depth face
+        cv2.imwrite(os.path.join(debug_dir, f"{filename}_frame_{frame_idx:04d}_face_{face_idx}_depth.jpg"), face_depth)
+        
+        # Save colored version for better visualization with inverted colors
+        inverted_face = 255 - face_depth
+        face_colored = cv2.applyColorMap(inverted_face, cv2.COLORMAP_JET)
+        cv2.imwrite(os.path.join(debug_dir, f"{filename}_frame_{frame_idx:04d}_face_{face_idx}_depth_colored.jpg"), face_colored)
     
     # Process each face
     for face_idx, face_depth in enumerate(faces):
         # Create mesh from depth map
         mesh = depth_to_mesh(face_depth, face_idx)
         
-        # Calculate triangle orientations
+        # Calculate triangle orientations with different methods for comparison
         orientation_map = calculate_triangle_orientations(mesh, face_depth.shape)
         
-        # Ensure orientation map is properly scaled to 0-255
+        # Scale orientation maps to 0-255 for visualization
         orientation_img = np.clip(orientation_map * 255, 0, 255).astype(np.uint8)
         
-        # Save as image
+        # Save orientation images
+        cv2.imwrite(os.path.join(debug_dir, f"{filename}_frame_{frame_idx:04d}_face_{face_idx}_orientation.jpg"), 
+                   orientation_img)
+        
+        # Save colored versions for better visualization
+        orientation_colored_fixed = cv2.applyColorMap(orientation_img, cv2.COLORMAP_JET)
+        
+        cv2.imwrite(os.path.join(debug_dir, f"{filename}_frame_{frame_idx:04d}_face_{face_idx}_orientation_colored.jpg"), 
+                   orientation_colored_fixed)
+        
+        # Save the final output to the main output directory
         output_path = os.path.join(output_dir, f"{filename}_frame_{frame_idx:04d}_face_{face_idx}.jpg")
         cv2.imwrite(output_path, orientation_img)
+        
         print(f"Saved face {face_idx} to {output_path}")
 
 def equirectangular_to_cubemap(equirectangular_img, face_size=None):
@@ -238,8 +268,8 @@ def depth_to_mesh(depth_map, face_idx):
     """
     height, width = depth_map.shape
     
-    # Normalize depth values (0-1)
-    depth_values = depth_map.astype(float)
+    # keep original values and just invert them
+    depth_values = (255.0 - depth_map.astype(float)) / 255.0
     
     # Create grid coordinates
     y, x = np.mgrid[0:height, 0:width]
@@ -251,7 +281,6 @@ def depth_to_mesh(depth_map, face_idx):
     # Create vertices based on face
     vertices = np.zeros((height * width, 3))
     
-    # The depth values control how far the point is in the face normal direction
     # Scale depth to a reasonable range (e.g., 0.1 to 1.0)
     min_depth = 0.1
     max_depth = 1.0
@@ -309,16 +338,11 @@ def depth_to_mesh(depth_map, face_idx):
 
 def calculate_triangle_orientations(mesh, depth_shape):
     """
-    Calculate the orientation of each triangle with respect to the center of projection.
-    
-    Following the paper description, we store the angles between face normals
-    and the view direction (dot product). We want:
-    - Dark values (near 0) for centers of faces (face normal aligned with view direction)
-    - Bright values (near 1) for edges/boundaries (face normal perpendicular to view direction)
+    orientation between face normal and view vector
     
     Args:
         mesh: trimesh.Trimesh object
-        depth_shape: Original shape of the depth map (height, width)
+        depth_shape: shape of the depth map (height, width)
         
     Returns:
         2D array with orientation values (0 to 1)
@@ -331,9 +355,8 @@ def calculate_triangle_orientations(mesh, depth_shape):
     # Calculate centroids of each face
     face_centroids = mesh.triangles_center
     
-    # Calculate view vectors (from centroid to origin, not from origin to centroid)
-    # This is the correct direction for comparing with face normals
-    view_vectors = -face_centroids  # Negative because we want vectors pointing toward origin
+    # Calculate view vectors (from centroid to origin)
+    view_vectors = -face_centroids
     
     # Normalize view vectors
     norms = np.linalg.norm(view_vectors, axis=1)
@@ -342,27 +365,15 @@ def calculate_triangle_orientations(mesh, depth_shape):
     normalized_view_vectors[valid_indices] = view_vectors[valid_indices] / norms[valid_indices, np.newaxis]
     
     # Calculate dot product of normal and view vector
-    # We want the absolute value to handle back-facing triangles
     dot_products = np.abs(np.sum(mesh.face_normals * normalized_view_vectors, axis=1))
     
-    # IMPORTANT FIX: We need to convert from dot products to angles
-    # When vectors are parallel (centers of faces), dot product is near 1, we want value near 0
-    # When vectors are perpendicular (edges), dot product is near 0, we want value near 1
-    # Solution: Use 1 - |dot product| to get the desired mapping
+    # orientation is dot product
     orientations = dot_products
     
     # Get original depth map dimensions
     height, width = depth_shape
     
-    # Calculate the expected number of triangles
-    expected_triangles = 2 * (height - 1) * (width - 1)
-    
-    # Verify that we have the right number of triangles
-    num_triangles = len(mesh.faces)
-    if num_triangles != expected_triangles:
-        print(f"Warning: Number of triangles ({num_triangles}) doesn't match expected ({expected_triangles})")
-    
-    # Initialize output array with the same dimensions as the input depth map
+    # Initialize output array
     orientation_map = np.zeros((height, width))
     
     # Convert triangles to a coherent map
@@ -374,10 +385,10 @@ def calculate_triangle_orientations(mesh, depth_shape):
             idx2 = triangle_index + 1
             triangle_index += 2
             
-            if idx1 < num_triangles and idx2 < num_triangles:
+            if idx1 < len(orientations) and idx2 < len(orientations):
                 # Average the orientation of the two triangles
                 avg_orientation = (orientations[idx1] + orientations[idx2]) / 2
-                # Assign to all four corners of the quad for better visualization
+                # Assign to all four corners of the quad
                 orientation_map[i, j] = avg_orientation
                 orientation_map[i, j+1] = avg_orientation
                 orientation_map[i+1, j] = avg_orientation

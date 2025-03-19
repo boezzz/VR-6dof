@@ -1,4 +1,4 @@
-# Mono6D: Transforming Casually Captured 360° Video into on-the-go 6-DOF Immersive Experiences
+# Mono6D: Transforming Casually Captured 360° Video into On-The-Go 6-DOF Immersive Experiences
 
 For more details, you can find the final technical report under /docs or visit [the project website](https://boezzz.com/mono6D/)
 

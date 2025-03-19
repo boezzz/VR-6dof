@@ -16,21 +16,12 @@ let scene, camera, renderer;
 let controllerGrip1, controllerGrip2;
 let rgbdPlayer;
 
-// load assets
-const filenames = 'bishop01_1';
+const filenames = ['bishop01_1', 'pier', 'cafeteria', 'shore'];
+let currentFileIndex = 0;
 
-const videoPath = `./video/${filename}.mp4`;
-const depthVideoPath = `./video/${filename}_depth.mp4`;
-const alphaVideoPath = `./video/${filename}_alphaproc.mp4`;
+// array to store all assets, dirty might delete
+let allAssets = [];
 
-const extrapolatedImagePath = `./video/${filename}_BG.png`;
-const extrapolatedDepthPath = `./video/${filename}_BGD.png`;
-const extrapolatedAlphaPath = `./video/${filename}_BGA.png`;
-
-const inpaintImagePath = `./video/${filename}_BG_inp.png`;
-const inpaintDepthPath = `./video/${filename}_BGD_inp.png`;
-
-// Initialize the app
 function init() {
   // Create scene
   scene = new THREE.Scene();
@@ -50,18 +41,53 @@ function init() {
   // Set up controllers
   setupControllers();
   
-  // Load media assets
-  loadAssets().then(() => {
-    // Create RGBD player when assets are loaded
-    rgbdPlayer = new RGBDVideoPlayer();
-    rgbdPlayer.addToScene(scene);
-    rgbdPlayer.setLayerCount(3); // Enable all layers by default
+  // Preload all assets
+  preloadAllAssets().then(() => {
+    // Create RGBD player with the first video
+    loadCurrentVideo();
     
     console.log('RGBD player ready');
   });
   
   // Start animation loop
   renderer.setAnimationLoop(animate);
+}
+
+// Preload all assets
+async function preloadAllAssets() {
+  for (let i = 0; i < filenames.length; i++) {
+    console.log(`Preloading assets for ${filenames[i]}...`);
+    allAssets[i] = await loadAssetsForFilename(filenames[i]);
+  }
+  return true;
+}
+
+// Load the current video based on currentFileIndex
+function loadCurrentVideo() {
+  // If there's an existing player, remove it
+  if (rgbdPlayer) {
+    // Pause all videos
+    if (rgbdPlayer.isPlaying()) {
+      rgbdPlayer.togglePlayback();
+    }
+    
+    // Remove from scene
+    scene.remove(rgbdPlayer.group);
+  }
+  
+  // Create a new player with the current assets
+  const currentAssets = allAssets[currentFileIndex];
+  rgbdPlayer = new RGBDVideoPlayer(currentAssets);
+  rgbdPlayer.addToScene(scene);
+  rgbdPlayer.setLayerCount(3); // Enable all layers by default
+  
+  console.log(`Loaded video: ${filenames[currentFileIndex]}`);
+}
+
+// Cycle to the next video
+function cycleToNextVideo() {
+  currentFileIndex = (currentFileIndex + 1) % filenames.length;
+  loadCurrentVideo();
 }
 
 // maybe optional, pending delete
@@ -78,13 +104,13 @@ function setupControllers() {
   // Controller 1
   const controller1 = renderer.xr.getController(0);
   controller1.addEventListener('selectstart', onSelectStart);
-  controller1.addEventListener('selectend', onSelectEnd);
+  controller1.addEventListener('squeezeend', onSqueezeEnd);
   scene.add(controller1);
 
   // Controller 2
   const controller2 = renderer.xr.getController(1);
   controller2.addEventListener('selectstart', onSelectStart);
-  controller2.addEventListener('selectend', onSelectEnd);
+  controller2.addEventListener('squeezeend', onSqueezeEnd);
   scene.add(controller2);
 
   // Controller grips for visualizing controllers
@@ -104,23 +130,39 @@ function onSelectStart(event) {
   }
 }
 
-function onSelectEnd(event) {
-  // TODO: pause or quit the player, back to menu
+function onSqueezeEnd(event) {
+  // Cycle to next video on button release
+  cycleToNextVideo();
+  if (rgbdPlayer) {
+    rgbdPlayer.togglePlayback();
+  }
 }
 
-// Asset loading management
-let assets = {
-  videoElement: null,
-  depthVideoElement: null,
-  alphaVideoElement: null,
-  extrapolatedTexture: null,
-  extrapolatedDepth: null,
-  extrapolatedAlpha: null,
-  inpaintTexture: null,
-  inpaintDepth: null
-};
+// Asset loading management for a specific filename
+async function loadAssetsForFilename(filename) {
+  const videoPath = `./video/${filename}.mp4`;
+  const depthVideoPath = `./video/${filename}_depth.mp4`;
+  const alphaVideoPath = `./video/${filename}_alphaproc.mp4`;
 
-async function loadAssets() {
+  const extrapolatedImagePath = `./video/${filename}_BG.png`;
+  const extrapolatedDepthPath = `./video/${filename}_BGD.png`;
+  const extrapolatedAlphaPath = `./video/${filename}_BGA.png`;
+
+  const inpaintImagePath = `./video/${filename}_BG_inp.png`;
+  const inpaintDepthPath = `./video/${filename}_BGD_inp.png`;
+
+  // Create assets object
+  let assets = {
+    videoElement: null,
+    depthVideoElement: null,
+    alphaVideoElement: null,
+    extrapolatedTexture: null,
+    extrapolatedDepth: null,
+    extrapolatedAlpha: null,
+    inpaintTexture: null,
+    inpaintDepth: null
+  };
+
   // Create video elements
   assets.videoElement = document.createElement('video');
   assets.videoElement.src = videoPath;
@@ -175,7 +217,9 @@ async function loadAssets() {
 
 // Main Layered Video Player class
 class RGBDVideoPlayer {
-  constructor() {
+  constructor(assets) {
+    this.assets = assets;
+    
     // Create video textures
     this.videoTexture = new THREE.VideoTexture(assets.videoElement);
     this.videoTexture.minFilter = THREE.LinearFilter;
@@ -206,9 +250,9 @@ class RGBDVideoPlayer {
     // Layer 1: Inpainted Layer
     this.bgSimpleMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        bgtext: { value: assets.inpaintTexture },
-        depthbg: { value: assets.inpaintDepth },
-        depthfg: { value: assets.extrapolatedDepth },
+        bgtext: { value: this.assets.inpaintTexture },
+        depthbg: { value: this.assets.inpaintDepth },
+        depthfg: { value: this.assets.extrapolatedDepth },
         depthfront: { value: this.depthTexture },
         matWVP: { value: new THREE.Matrix4() },
         desat: { value: 0.0 },
@@ -222,9 +266,9 @@ class RGBDVideoPlayer {
     // Layer 2: Extrapolated Layer
     this.fgSimpleMaterial = new THREE.ShaderMaterial({
       uniforms: {
-        fgtext: { value: assets.extrapolatedTexture },
-        fgdepth: { value: assets.extrapolatedDepth },
-        alphamask: { value: assets.extrapolatedAlpha },
+        fgtext: { value: this.assets.extrapolatedTexture },
+        fgdepth: { value: this.assets.extrapolatedDepth },
+        alphamask: { value: this.assets.extrapolatedAlpha },
         frontdepth: { value: this.depthTexture },
         matWVP2: { value: new THREE.Matrix4() },
         desat: { value: 0.0 },
@@ -277,18 +321,22 @@ class RGBDVideoPlayer {
   }
   
   togglePlayback() {
-    if (assets.videoElement.paused) {
-      assets.videoElement.play();
-      assets.depthVideoElement.play();
-      assets.alphaVideoElement.play();
+    if (this.assets.videoElement.paused) {
+      this.assets.videoElement.play();
+      this.assets.depthVideoElement.play();
+      this.assets.alphaVideoElement.play();
       // synchronize videos
-      assets.depthVideoElement.currentTime = assets.videoElement.currentTime;
-      assets.alphaVideoElement.currentTime = assets.videoElement.currentTime;
+      this.assets.depthVideoElement.currentTime = this.assets.videoElement.currentTime;
+      this.assets.alphaVideoElement.currentTime = this.assets.videoElement.currentTime;
     } else {
-      assets.videoElement.pause();
-      assets.depthVideoElement.pause();
-      assets.alphaVideoElement.pause();
+      this.assets.videoElement.pause();
+      this.assets.depthVideoElement.pause();
+      this.assets.alphaVideoElement.pause();
     }
+  }
+  
+  isPlaying() {
+    return !this.assets.videoElement.paused;
   }
 
   recenterCamera() {
@@ -405,7 +453,7 @@ class RGBDVideoPlayer {
     }
   }
   
-  // Add method to set layer visibility
+  // set layer visibility
   setLayerCount(count) {
     this.layerCount = Math.max(1, Math.min(3, count));
     
@@ -471,5 +519,49 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-// Initialize the application
+// UI for non-VR mode
+function addUI() {
+  const container = document.createElement('div');
+  container.style.position = 'absolute';
+  container.style.bottom = '20px';
+  container.style.left = '20px';
+  container.style.color = 'white';
+  container.style.background = 'rgba(0,0,0,0.5)';
+  container.style.padding = '10px';
+  container.style.borderRadius = '5px';
+  container.style.fontFamily = 'Arial, sans-serif';
+  
+  const currentVideoText = document.createElement('div');
+  currentVideoText.id = 'current-video';
+  currentVideoText.innerText = `Current Video: ${filenames[currentFileIndex]}`;
+  
+  const nextButton = document.createElement('button');
+  nextButton.innerText = 'Next Video';
+  nextButton.style.marginTop = '10px';
+  nextButton.style.padding = '5px 10px';
+  nextButton.addEventListener('click', cycleToNextVideo);
+  
+  container.appendChild(currentVideoText);
+  container.appendChild(nextButton);
+  document.body.appendChild(container);
+  
+  const updateUI = () => {
+    const currentVideoElement = document.getElementById('current-video');
+    if (currentVideoElement) {
+      currentVideoElement.innerText = `Current Video: ${filenames[currentFileIndex]}`;
+    }
+  };
+  
+  const originalCycleToNextVideo = cycleToNextVideo;
+  cycleToNextVideo = () => {
+    originalCycleToNextVideo();
+    updateUI();
+  };
+}
+
 init();
+
+// Add UI for non-VR mode
+if (!renderer.xr.isPresenting) {
+  addUI();
+}

@@ -239,7 +239,7 @@ def depth_to_mesh(depth_map, face_idx):
     height, width = depth_map.shape
     
     # Normalize depth values (0-1)
-    depth_values = depth_map.astype(float) / 255.0
+    depth_values = depth_map.astype(float)
     
     # Create grid coordinates
     y, x = np.mgrid[0:height, 0:width]

@@ -1,0 +1,13 @@
+name: mono6d_env
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11.4
+  - numpy
+  - pathlib
+  - scipy
+  - pip
+  - pip:
+      - opencv-contrib-python
+      - trimesh

@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <!-- Basic Page Needs
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta charset="utf-8">
+    <title>CSE 490V Final Project Report</title>
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <!-- Mobile Specific Metas
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- FONT
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <link href='https://fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>
+
+    <!-- CSS
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/skeleton.css">
+    <link rel="stylesheet" href="css/custom.css">
+
+    <!-- Custom Styles -->
+    <style>
+        .links {
+            margin: 30px 0;
+        }
+        .links .button {
+            margin: 0 10px;
+            font-size: 18px;
+            padding: 12px 25px;
+            height: auto;
+            line-height: 1.2;
+        }
+    </style>
+
+    <!-- Scripts
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+    <script src="js/site.js"></script>    
+
+    <!-- Favicon
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <link rel="icon" type="image/png" href="favicon.png">
+
+</head>
+
+<body>
+
+    <!-- Primary Page Layout
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <div class="container">
+        
+        <!-- Title
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+        
+        <section class="hero u-full-width">
+            <div class="hero-image"></div>
+            <div class="container centered">
+                <div class="twelve columns">
+                    <h1>mono6D: Online 6-DOF Viewer</h1>
+                    <h4>Transforming Casually Captured 360° Video into On-The-Go 6-DOF Immersive Experiences</h4>
+                    <h2>Boyang 'Boe' Zhou</h2>
+                    <h2>zby2003@cs.washington.edu, University of Washington</h2>
+                    
+                    <div class="links">
+                        <a href="https://github.com/boezzz/mono6D" target="_blank" class="button button-primary">🔗 GitHub Repo</a>
+                        <a href="https://mono6d-a0ee0.web.app" target="_blank" class="button">🚀 Online Demo</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        
+        <!-- Navigation
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <div class="navbar-spacer"></div>
+        <nav class="navbar">
+            <div class="container">
+                <ul class="navbar-list">
+                    <li class="navbar-item"><a class="navbar-link" href="#intro">Introduction</a></li>
+                    <li class="navbar-item"><a class="navbar-link" href="#related">Related Work</a></li>
+                    <li class="navbar-item"><a class="navbar-link" href="#method">Method</a></li>
+                    <li class="navbar-item"><a class="navbar-link" href="#implementation">Implementation</a></li>
+                    <li class="navbar-item"><a class="navbar-link" href="#analysis">Evaluation</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Abstract
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+        
+        <div class="docs-section" id="abstract">
+            
+            <h6 class="docs-header">Abstract</h6>
+            <p>
+                Many efforts have been made to enhance the immersiveness of video viewing in VR, from stereo cameras to eye-tracked varifocal lenses. While these technologies have shown great potential, they often face limitations such as requiring specialized hardware and lacking an internet-friendly, open-source format for exchanging raw video data.  
+                In this project, I present <b>mono6D</b>, an online video viewer that achieves a motion parallax effect when viewed through any commercial headset with WebXR support. Built on previous research in image-based rendering and 360-degree image depth estimation, mono6D provides an integrated pipeline that transforms casually captured monocular 360-degree video into fully navigable 6 Degrees-of-Freedom (6-DOF) content, viewable online.
+            </p>
+            
+            <!-- Slideshow
+            –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+            
+            <!-- Slideshow container -->
+            <div class="slideshow-container">
+
+                <!-- Full-width images with number and caption text -->
+                <div class="mySlides">
+                    <div class="numbertext">1 / 5</div>
+                    <img src="images/bishop00_1_frame_0000_face_4_depth.jpg" style="width:100%">
+                    <div class="text">Depth from one of the sample video frames</div>
+                </div>
+                <div class="mySlides">
+                    <div class="numbertext">2 / 5</div>
+                    <img src="images/bishop00_1_frame_0000_face_4_orientation_fixed.jpg" style="width:100%">
+                    <div class="text">Edges detecte from depth map after orientation processing</div>
+                </div>
+                <div class="mySlides">
+                    <div class="numbertext">3 / 5</div>
+                    <img src="images/bishop_alpha_map.png" style="width:100%">
+                    <div class="text">Alpha map generated from mesh orientations (dipicting real world edges)</div>
+                </div>
+               <div class="mySlides">
+                    <div class="numbertext">4 / 5</div>
+                    <img src="images/bishop03_1_BG.png" style="width:100%">
+                    <div class="text">Extrapolated background image (without moving objects)</div>
+                </div>
+                <div class="mySlides">
+                    <div class="numbertext">5 / 5</div>
+                    <img src="images/webpage_shot.png" style="width:100%">
+                    <div class="text">Screenshot of webpage demo on desktop browser</div>
+                </div>
+                
+
+                <!-- Next and previous buttons -->
+                <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+                <a class="next" onclick="plusSlides(1)">&#10095;</a>
+            </div>
+            
+            <!-- The dots/circles -->
+            <div style="text-align:center">
+                <span class="dot" onclick="currentSlide(1)"></span>
+                <span class="dot" onclick="currentSlide(2)"></span>
+                <span class="dot" onclick="currentSlide(3)"></span>
+                <span class="dot" onclick="currentSlide(4)"></span>
+                <span class="dot" onclick="currentSlide(5)"></span>
+            </div>
+            
+            <script src="js/slideshow.js"></script>
+            
+            <div style="line-height:25%;">
+                <br>
+            </div>
+            
+             <!-- End of slideshow
+            –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+            
+        <!-- Introduction
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+        
+        <div class="docs-section" id="intro">
+            
+            <h6 class="docs-header">Introduction</h6>
+            <p>6-DOF video, or 6 Degrees of Freedom video, is a media format that allows viewers to control both the position and orientation of the camera, enabling more immersive VR experiences. By leveraging 6-DOF head tracking data from modern VR headsets, users can explore pre-captured content with translational motion, introducing realistic motion parallax. </p>
+
+            <p>Compared to traditional 3-DOF 360-degree video, which is commonly seen on YouTube and other streaming platforms, 6-DOF video offers greater realism and interactivity, resulting in a significantly more immersive experience. This has strong implications for the next generation of media as we transition from 2D to 3D content.</p>
+
+            <p>Several approaches have been explored to generate 6-DOF video. One method involves capturing light fields using a custom-made camera array, encoding angular variations of light rays to reconstruct different viewpoints (Broxton et al., 2019). Another recent popular approach is 4D Gaussian Splatting, which, while capable of high-quality results, remains computationally intensive and requires input from multiple viewpoints. </p>
+
+            <p>I set out to address two key challenges seen in previous 6-DOF video solutions:  
+1. Ease of Capture – using only a single commercial device (i.e., a handheld 360° camera).  
+2. Accessibility – making the 6-DOF experience available in a widely distributable format.</p>  
+
+            <p>To tackle these problems, I developed mono6D, an online 6-DOF viewer that takes any 360-degree video captured from a single viewpoint as input and generates a distributable 6-DOF video with motion parallax. mono6D is largely built upon the research led by Ana Serrano in the paper <i>"Motion Parallax for 360° RGBD Video"</i>, which proposes separating monoscopic 360° video into three distinct layers based on depth and disocclusion across frames, with each layer rendered separately during playback (Serrano et al., 2019). Although this method does not achieve high-fidelity, state-of-the-art results and does not incorporate deep learning into its pipeline, it is relatively lightweight and computationally feasible to implement.</p>  
+
+            <p>Throughout this project, I adopted an online-first approach, implementing the method presented in the original paper within a WebXR-based pipeline that is more suitable for online distribution. This greatly improves the availability of 6-DOF content and makes the idea of a content platform—similar to YouTube but exclusively for 6-DOF videos—more attainable. I discovered that front-end content loading and rendering speeds are fast for 6-DOF content, thanks to its compact size and straightforward rendering pipeline. However, preprocessing speed on the backend remains a challenge and requires further optimization for this particular layer-based approach.</p>
+            
+            <h6 class="docs-header">Contributions</h6>
+            
+            <ul style="line-height:1.0;">
+                <li>Contribution 1: Published the online playback demo website (accessible through the link on top), which is written in three.js along with custom GLSL shaders to render the video layers.</li>
+                <li>Contribution 2: Implemented a Python-based backend preprocessing code to turn a monoscopic 360 video into a series of videos and images that are ready to be fed into the online viewer, according to the paper "Motion Parallax for 360° RGBD Video."</li>
+            </ul>
+            
+        </div>
+        
+        <!-- Related Work
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <div class="docs-section" id="related">
+
+            <h6 class="docs-header">Related Work</h6>
+            <strong>360 Video Capture</strong>
+    <p>360-degree video, an evolution of panoramic photography, enables the capture of an entire scene from a single viewpoint. There are two widely available 360 video formats:</p>
+    
+    <ul>
+        <li><strong>Monoscopic:</strong> Captured with a single camera pointing in all directions. This format is lightweight, suitable for handheld devices, and widely supported on platforms like YouTube and Facebook. However, it lacks stereoscopic depth perception.</li>
+        <img src="images/dsc09112-copy.jpg" alt="Monoscopic 360 camera" style="width: 50%; height: auto; display: block; margin-left: auto; margin-right: auto;">
+        <li><strong>Stereoscopic:</strong> Captured using at least two cameras per view direction to create depth perception. This format improves immersion but is more complex to capture and process, often requiring specialized rigs.</li>
+        <img src="images/360-Round_3.jpg" alt="Stereoscopic 360 camera" style="width: 50%; height: auto; display: block; margin-left: auto; margin-right: auto;">
+    </ul>
+    
+    <table>
+        <tr>
+            <th>Format</th>
+            <th>Setup Complexity</th>
+            <th>Depth</th>
+            <th>Field of View</th>
+        </tr>
+        <tr>
+            <td>Monoscopic</td>
+            <td>Low</td>
+            <td>No</td>
+            <td>360°</td>
+        </tr>
+        <tr>
+            <td>Stereoscopic</td>
+            <td>High</td>
+            <td>Yes</td>
+            <td>180° or 360°</td>
+        </tr>
+    </table>
+    
+    <strong>Image-Based Rendering</strong>
+    <p>Image-based rendering (IBR) techniques are widely used to synthesize novel viewpoints for 6-DOF or volumetric video experiences. These methods can be broadly categorized into:</p>
+    
+    <ul>
+        <li><strong>Heuristic-Based IBR:</strong> These methods create a geometric proxy of the scene by analyzing depth maps and pixel correspondences between frames. They reconstruct the scene and reproject RGB values to render new views.</li>
+        <li><strong>Neural Rendering-Based IBR:</strong> Recent learning-based approaches, such as Neural Radiance Fields (NeRF) (Mildenhall et al. 2020), synthesize and interpolate novel viewpoints using deep learning. These techniques achieve photorealistic results but are computationally intensive and require extensive training data.</li>
+    </ul>
+    
+    <table>
+        <tr>
+            <th>IBR Method</th>
+            <th>Key Technique</th>
+            <th>Advantages</th>
+            <th>Limitations</th>
+        </tr>
+        <tr>
+            <td>Depth-Based Projection</td>
+            <td>Depth maps + RGB reprojection</td>
+            <td>Works well with structured depth input</td>
+            <td>Prone to artifacts in occluded regions</td>
+        </tr>
+        <tr>
+            <td>Layered Depth Image (LDI)</td>
+            <td>Multi-plane depth layers</td>
+            <td>Reduces depth artifacts, efficient for static scenes</td>
+            <td>Limited scalability for dynamic scenes</td>
+        </tr>
+        <tr>
+            <td>NeRF (Mildenhall et al.)</td>
+            <td>Neural volumetric rendering</td>
+            <td>High-quality novel view synthesis</td>
+            <td>Computationally expensive, requires large datasets</td>
+        </tr>
+        <tr>
+            <td>4D Gaussian Splatting</td>
+            <td>Point-based neural representation</td>
+            <td>Real-time rendering, better performance than NeRF</td>
+            <td>Still computationally expensive for long sequences</td>
+        </tr>
+    </table>
+    
+    <strong>Commercial Product</strong>
+    <p>There are also several software applications available on app stores. A notable example is the Pseudoscience 6DOF Video Player, which is still downloadable from the Quest Store. Since it is not open-source, the exact implementation remains unknown. However, it requires both an equirectangular 360-degree video and depth maps as inputs and generates a final scene with noticeable artifacts (image below). It is likely based on a primitive image-based rendering approach without layer representation or depth optimization.</p>
+    <img src="images/pseudoscience.jpg" alt="Pseudoscience 6DOF Video Player Screenshot" style="width: 50%; height: auto; display: block; margin-left: auto; margin-right: auto;">
+    <figcaption style="text-align: center;">Screenshot of the Pseudoscience 6DOF Video Player showing view-dependent artifacts during novel view synthesis</figcaption>
+        </div>
+        
+        <!-- Method
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <div class="docs-section" id="method">
+
+            <h6 class="docs-header">Method</h6>
+            <strong>Layered Video Representation</strong>
+    <ul>
+        <li><strong>Foreground Layer:</strong> This layer is obtained directly from the RGB video and its corresponding depth map. It contains all visible objects in the scene that are repositioned based on user movement. The original video and depth map are used to represent the perfect scenario where the user’s head position overlaps with the capture point.</li>
+        <p>An alpha map at disocclusion boundaries is used to determine when the foreground layer should fade to reveal the background layers. These boundaries are detected by analyzing edges in the 3D world using depth maps, followed by threshold filtering and logistic function-based noise reduction.</p>
+        <img src="images/foreground_rgb.jpg" alt="Foreground Layer" style="width: 50%; height: auto; display: block; margin: 0 auto;">
+        <li><strong>Extrapolated Layer:</strong> As the viewer moves, occluded areas become visible. This layer provides missing information by revealing background regions seen in other frames. This is achieved by storing depth across all frames and selecting the deepest depth per pixel to extract static background elements.</li>
+        <img src="images/cafeteria_BG.png" alt="Extrapolated Layer" style="width: 50%; height: auto; display: block; margin: 0 auto;">
+        <li><strong>Inpainted Layer:</strong> Permanently hidden regions due to occlusion are filled through inpainting. Fully occluded disocclusion boundaries (extracted from the foreground layer) undergo PDE-based inpainting, smoothly interpolating known values. AI-powered inpainting is avoided due to the small discussion areas and limited head movement, favoring more efficient methods.</li>
+        <img src="images/cafeteria_BG_inp.png" alt="Inpainted Layer" style="width: 50%; height: auto; display: block; margin: 0 auto;">
+    </ul>
+
+    <strong>Depth Map Preprocessing and Optimization</strong>
+    <p>Raw depth maps from monocular depth estimation suffer from inaccuracies at object boundaries, depth bleeding, and temporal inconsistency. To refine depth estimates, an energy minimization approach is applied as described in the original paper:</p>
+    <p style="text-align: center;">arg min<sub>d</sub> (λ<sub>data</sub>E<sub>data</sub> + λ<sub>e</sub>E<sub>e</sub> + λ<sub>sm</sub>E<sub>sm</sub> + λ<sub>t</sub>E<sub>t</sub>)</p>
+        <ul>
+        <li>E<sub>data</sub>: Ensures consistency with the original depth map.</li>
+        <li>E<sub>e</sub>: Enforces edge alignment to prevent depth bleeding.</li>
+        <li>E<sub>sm</sub>: Smooths depth values to reduce artifacts.</li>
+        <li>E<sub>t</sub>: Maintains temporal coherence using optical flow-based warping.</li>
+    </ul>
+    <p>This method is directly from the original paper and has not yet been fully integrated into the current processing pipeline, so additional mathematical details are omitted.</p>
+
+    <strong>Real-Time Rendering</strong>
+    <p>During playback, the three layers are rendered as separate meshes. Each vertex's xyz position is scaled by depth and positioned accordingly, with interpolation ensuring smooth transitions between depth values.</p>
+    <p>Vertex Position Calculation:</p>
+    <p style="text-align: center;">vertex_position = (position_x * img_depth, position_y * img_depth, position_z * img_depth)</p>
+    <p>where img_depth = 0.3 / (original_depth + 0.001). The inversion accounts for greater motion parallax effects at closer vertices, with 0.3 acting as a scaling parameter.</p>
+    <p>Final pixel values are determined through opacity blending across layers. To achieve this in the three-layer structure, the following opacity blending function from the original paper is applied to the foreground and extrapolated layers:</p>
+    <p style="text-align: center;">α<sub>F</sub> = S(δ) α̂<sub>F</sub> + (1 - S(δ))</p>
+    <p>where S(δ) is a sigmoid function of the distance between the head position and the projection center (capture point), with k=30 and c=0.15, ensuring natural fading based on the viewer’s distance from the center of projection.</p>
+    <img src="images/webpage_shot.png" alt="viewer" style="width: 50%; height: auto; display: block; margin: 0 auto;">
+        </div>
+        
+        <!-- Implementation
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <div class="docs-section" id="implementation">
+
+            <h6 class="docs-header">Implementation Details</h6>
+            <p><strong>Backend:</strong></p>
+
+            <p>The input of the whole system is monoscopic 360 video, the first step is to generate the corresponding depth map of the video. The specific implementation I used in this step is a neural-network based depth estimation pipeline published in “Depth Anywhere: Enhancing 360 Monocular Depth Estimation via Perspective Distillation and Unlabeled Data Augmentation” (Wang, Liu, 2024).</p>
+
+            <p>The generated depth map, along with the original RGB video, is then sent to the Python pipeline to be preprocessed. The first component of the pipeline is a Python script that optimizes the original depth map to denoise it and optimize the sharp transition between depth boundaries. The program obtains optical flow between frames using <code>cv2.calcOpticalFlowFarneback</code> and conducts objective optimization as described in the method section, and then applies a bilateral filter using <code>cv2.ximgproc.jointBilateralFilter</code>. The preprocessing script currently has some problems, so it is not fully functional and does not produce a high-quality depth map.</p>
+
+            <p>The second component of the Python preprocessing pipeline is generating the three layers and their corresponding alpha map using the input video and depth. The <code>trimesh</code> library in Python is used to transform frame depth information into a mesh and then assign the dot product between the view vector and face normals to the vertex. With the orientation information, the alpha map of the foreground layer is generated, which is then thresholded and applied a logistic function to locate the main boundaries. By finding the appropriate background depth and extracting the pixel values with those depths, the extrapolated layer is generated. The final inpaint layer is then generated through <code>cv2.inpaint</code>.</p>
+
+            <p>At the end of the preprocessing steps, we have the following documents:</p>
+
+            <ul>
+            <li>The original equirectangular 360 RGB video</li>
+            <li>The optimized depth map video</li>
+            <li>The alpha map video that controls foreground layer transparency</li>
+            <li>The extrapolated layer RGB image</li>
+            <li>The extrapolated layer depth image</li>
+            <li>The extrapolated layer alpha map image that controls extrapolated layer transparency</li>
+            <li>The inpainted layer RGB image</li>
+            <li>The inpainted layer depth image</li>
+            </ul>
+
+            <p><strong>Frontend:</strong></p>
+
+            <p>The web-based viewer is written in three.js. It uses three spherical meshes to represent the three layers. Each spherical mesh has its own fragment and vertex shader written in GLSL. For the inpainted layer, because it is a static image with no alpha value, it does not respond to any head movement. Instead, pixel positions are simply scaled by depth value to represent the position in space. The foreground layer and extrapolated layer render based on the head position, as pointed out in the method section, so their fragment shaders take in the head position and the origin of the spheres as input to calculate the amount of translational movement required for the pixels. Opacity blending is also conducted here to adjust which layer is visible.</p>
+
+            <p>The interaction and UI are simple. People are able to enter VR mode through the VR Button built into three.js and use the right-hand pinch to resume/pause the video or the left-hand pinch to cycle through all the available videos.</p>
+
+            <p>The three.js website is then built and deployed to Firebase web hosting along with all the videos/images necessary for rendering the 6-DOF videos.</p>
+
+            <img src="images/temp_493v.drawio.png" alt="system diagram" style="width: 100%; height: auto; display: block; margin: 0 auto;">
+            <p><center>The system diagram above shows the overall pipeline of mono6D</center></p>
+
+        </div>
+        
+        <!-- Evaluation of Results
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <div class="docs-section" id="analysis">
+
+            <h6 class="docs-header">Evaluation of Results</h6>
+            <p>The evaluation is mainly consist of three parts: preprocessing speed, online playback speed, and 6-DOF viewing experience.</p>
+
+            <p>In terms of preprocessing speed, because the pipeline does not utilize ML-based methods except for depth estimation of the original 360 monoscopic video, the processing speed is around 10s per frame on an M1 Pro MacBook. Further speedup is expected when the preprocessing code is deployed to a server. However, real-time preprocessing is not possible (for example, for live streaming 360 video content to 6-DOF) due to how mono6D obtains the extrapolated layer, as we do not know whether an occluded region has been seen in the future.</p>
+
+            <p>The online viewer has a good loading speed thanks to the lean file structure, which only contains two videos and several images instead of a mesh/gaussian representation. At 2K resolution, a 30-second 6-DOF content can be loaded within 3 seconds and be viewed on Quest 3 at 30FPS. This shows the efficiency of using shaders to render the video with the help of WebGL.</p>
+
+            <p>Overall, the viewing experience is good. Given the limited resolution of current video assets loaded into the system for demo purposes, the image quality looks grainy on Quest 3 and sometimes pixels can become noisy across frames. This is a limitation of the original video quality and is true across all 360 videos captured on a handheld 360 monoscopic camera. The motion parallax effect is natural in certain videos but not in others. For example, static objects tend to have a smoother transition around their disocclusion boundary, while moving objects are often very noisy. Non-illuminating objects also tend to have a more natural look, while lamps and lights produce artifacts around them. Since the depth improvement script has not been fully implemented, this is an expected effect as the depth transition is not smooth and can bleed into surrounding objects.</p>
+
+            <p>Another potential limitation of the current approach is that all the preprocessing and render pipeline is static, where different videos with different themes (indoor, outdoor, many minions, little motion, etc.) go through the pipeline and share the common hyperparameters. This will likely not produce the optimal result. One simple example is thresholding of disocclusion boundaries when determining the alpha value of the foreground layer, which can employ very different threshold values between a room with few straight edges and an outdoor scene with many small noisy edges.</p>
+
+        </div>
+        
+        <!-- Evaluation of Results
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <!-- <div class="docs-section" id="discussion">
+
+            <h6 class="docs-header">Discussion of Benefits and Limitations</h6>
+            <p>This section may end up being combined with the evaluation and future work sections. The goal is to outline key benefits and limitations. Ideally, you'd link this back to the fundamental details of your approach in the method section. But, some of these limitations may result from your implementation itself. Try to make conclusions about your approach and why it might have advantages and disadvantages.</p>
+            
+        </div> -->
+        
+         <!-- Future Work
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <div class="docs-section" id="future">
+
+            <h6 class="docs-header">Future Work</h6>
+            <p>Although mono6D online 6-DOF viewer has already showcased preliminary results, future work still needs to be conducted in the following domains:</p>
+
+            <ul>
+            <li>Modification to the layer composition, especially how the extrapolated layer is obtained, to enable real-time preprocessing. This can be done through only comparing the known depth to each other for any given pixel location.</li>
+            <li>Try to make depth improvement work properly by correctly impleneting the objective optimization as described in the method section.</li>
+            <li>Have an integrated online pipeline from monoscopic video directly to the 6-DOF viewer. The current codebase still needs human intervention to run the preprocess progarm and transfer files to the frontend.</li>
+            <li>Slightly modify the pipeline and conduct more experiments on high-quality video captured by the new generation camera up to 6K. This might bring new challenges to the optimization of the video loading pipeline as well as real-time rednering.</li>
+            <li>Compare the viewing experience side-by-side with other image rendering techniques, especially the ones that heavily incorporate Machine Learning such as 4D Gaussian Splatting.</li>
+            </ul>
+
+        </div>
+        
+        <!-- Conclusion
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <div class="docs-section" id="conclusion">
+
+            <h6 class="docs-header">Conclusion</h6>
+            <p>In conclusion, mono6D online 6-DOF viewer is a proof-of-concept that demonstrates the feasibility for any user without sophisticated capture devices to distribute 6-DOF content online. The current implementation is not perfect and has some limitations, but the idea of an online 6-DOF content platform is promising and worth exploring in the age of XR. Through striking a balance between video quality and hardware constraints, we can see more immersive content adding a new dimension to how people consume content nowadays.</p>
+        </div>
+        
+        <!-- Acknowledgments
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <div class="docs-section" id="acknowledgments">
+
+            <h6 class="docs-header">Acknowledgments</h6>
+            <p>I would like to acknowledge that this work is largely built upon the research of Serrano et al., and this project would not have been possible without the theoretical framework established by their work. I would also like to express my gratitude to the CSE 493V staff team for their support.</p>
+
+        </div>
+        
+        <!-- Refernces
+        –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+
+        <div class="docs-section" id="references">
+
+            <h6 class="docs-header">References</h6>
+            <p>Broxton, J., et al. (2019). "A 360-degree light field camera for 3D immersive video capture." In IEEE International Conference on Computer Vision (ICCV), pp. 387-395.</p>
+            <p>Serrano, A., et al. (2019). "Motion Parallax for 360° RGBD Video." In IEEE Conference on Computer Vision and Pattern Recognition (CVPR), pp. 10895-10904.</p>
+            <p>Wang, T., & Liu, R. (2024). "Depth Anywhere: Enhancing 360 Monocular Depth Estimation via Perspective Distillation and Unlabeled Data Augmentation." In IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp. 11725-11734.</p>
+            <p>Mildenhall, B., et al. (2020). "NeRF: Representing Scenes as Neural Radiance Fields for View Synthesis." In European Conference on Computer Vision (ECCV), pp. 405-421.</p>
+            
+        </div>
+            
+           
+    <!-- End Document
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+        
+    </div>
+
+</body></html>

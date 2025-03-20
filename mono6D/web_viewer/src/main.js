@@ -17,7 +17,7 @@ let controllerGrip1, controllerGrip2;
 let rgbdPlayer;
 
 // add filename here to be included in the web app
-const filenames = ['bishop01_1', 'pier', 'cafeteria', 'shore'];
+const filenames = ['pier', 'cafeteria', 'shore', 'bishop03_1'];
 let currentFileIndex = 0;
 
 // array to store all assets, dirty might delete
@@ -30,7 +30,7 @@ function init() {
   
   // Create camera
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
-  camera.position.set(0, 0, 0);
+  camera.position.set(0, 1.7, 0);
   // camera added automatically
   
   // Set up renderer with proper transparency handling
@@ -102,24 +102,25 @@ function onWindowResize() {
 function setupControllers() {
   const controllerModelFactory = new XRControllerModelFactory();
   
-  // Controller 1 (right on quest)
-  const controller1 = renderer.xr.getController(0);
-  controller1.addEventListener('selectstart', onSelectStart);
-  scene.add(controller1);
+  // TODO: controll logic sometimes flip around
+  // Left controller
+  const leftController = renderer.xr.getController(1);
+  leftController.addEventListener('selectstart', onSwitchStart);
+  scene.add(leftController);
 
-  // Controller 2 (left on quest)
-  const controller2 = renderer.xr.getController(1);
-  controller2.addEventListener('selectstart', onSwitchStart);
-  scene.add(controller2);
+  // Right controller
+  const rightController = renderer.xr.getController(0); 
+  rightController.addEventListener('selectstart', onSelectStart);
+  scene.add(rightController);
 
   // Controller grips for visualizing controllers (optional)
-  controllerGrip1 = renderer.xr.getControllerGrip(0);
-  controllerGrip1.add(controllerModelFactory.createControllerModel(controllerGrip1));
-  scene.add(controllerGrip1);
+  const leftControllerGrip = renderer.xr.getControllerGrip(1);
+  leftControllerGrip.add(controllerModelFactory.createControllerModel(leftControllerGrip));
+  scene.add(leftControllerGrip);
 
-  controllerGrip2 = renderer.xr.getControllerGrip(1);
-  controllerGrip2.add(controllerModelFactory.createControllerModel(controllerGrip2));
-  scene.add(controllerGrip2);
+  const rightControllerGrip = renderer.xr.getControllerGrip(0);
+  rightControllerGrip.add(controllerModelFactory.createControllerModel(rightControllerGrip));
+  scene.add(rightControllerGrip);
 }
 
 // Controller event handlers
@@ -134,6 +135,7 @@ function onSwitchStart(event) {
   cycleToNextVideo();
   if (rgbdPlayer) {
     rgbdPlayer.togglePlayback();
+    rgbdPlayer.hasInitialPosition = false;
   }
 }
 
@@ -243,6 +245,8 @@ class RGBDVideoPlayer {
     this.sphereCenter = new THREE.Vector3(0, 0, 0);
     this.worldMatrix = new THREE.Matrix4();
     this.layerCount = 3;
+
+    this.hasInitialPosition = false;
   }
   
   setupLayers() {
@@ -345,12 +349,18 @@ class RGBDVideoPlayer {
   
   update(camera) {
     if (!camera) return;
-    
+    // Set initial position to head position on first update
+    if (!this.hasInitialPosition) {
+      const xrCamera = renderer.xr.getCamera();
+      const headPosition = new THREE.Vector3().setFromMatrixPosition(xrCamera.matrixWorld);
+      this.group.position.copy(headPosition);
+      this.hasInitialPosition = true;
+    }
     // Get the world matrix of the group
     this.worldMatrix.copy(this.group.matrixWorld);
     
     // Calculate sphere center in world space
-    this.sphereCenter.set(0, 0, 0).applyMatrix4(this.worldMatrix);
+    this.sphereCenter.applyMatrix4(this.worldMatrix);
     
     if (renderer.xr.isPresenting) {
       // XR mode - get the head position and update matrices for each eye
